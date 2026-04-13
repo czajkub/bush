@@ -1,0 +1,13 @@
+
+$counter = 0 + 1 * 2
+
+function increase_counter($amount) {
+    $counter = $counter + ($amount * 2)
+}
+
+
+while $counter < 10 {
+    ls -l
+    $test = $counter + 1
+    increase_counter 2
+}

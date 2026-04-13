@@ -1,0 +1,44 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "bush",
+      "camelcase": "Bush",
+      "title": "Bush",
+      "scope": "source.bush",
+      "file-types": [
+        "bush"
+      ],
+      "injection-regex": "^bush$",
+      "class-name": "TreeSitterBush"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Bash Upgraded SHell",
+    "authors": [
+      {
+        "name": " Jakub Czajka",
+        "email": "czajkub@student.agh.edu.pl"
+      },
+      {
+        "name": "Jakub Czyż, Jakub Czajka",
+        "email": "jczyz@student.agh.edu.pl"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/czajkub/bush"
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": true,
+    "java": false,
+    "node": false,
+    "python": false,
+    "rust": false,
+    "swift": false,
+    "zig": false
+  }
+}
