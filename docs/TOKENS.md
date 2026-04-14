@@ -29,14 +29,14 @@ This document outlines the lexical tokens of the `bush` language, based on its t
 | Multiplicative | `*`, `/` | Binary multiplication and division |
 | Additive | `+`, `-` | Binary addition and subtraction |
 | Comparative | `==`, `!=`, `<`, `<=`, `>`, `>=` | Comparison operations |
-| Logical | `&&`, `||` | Logical AND, Logical OR |
+| Logical | `&&`, `\|\|` | Logical AND, Logical OR |
 | Unary | `+`, `-`, `!`, `^`, `*`, `&`, `<-` | Unary prefix operators |
 
 ## Shell and Command Specifics
 
 | Token Name | Syntax | Description |
 | :--- | :--- | :--- |
-| Pipe | `|` | Pipes output of one command to another |
+| Pipe | `\|` | Pipes output of one command to another |
 | Redirect | `>`, `>>`, `&>`, `2>` | Redirects command output |
 | Expression Arg | `${...}` | Embedded expression in command argument |
 | Command Expr | `$(...)` | Command substitution / execution |
