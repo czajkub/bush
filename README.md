@@ -3,7 +3,7 @@
 Bash Upgraded SHell
 
 - **Goal:** improve the existing bash shell by removing arcane syntax conventions and simplifying syntax
-- **Language:** Rust
+- **Language:** Zig
 - **Parser Generator:** Tree-sitter
 
 ## Authors
