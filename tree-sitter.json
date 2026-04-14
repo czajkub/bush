@@ -37,8 +37,8 @@
     "java": false,
     "node": false,
     "python": false,
-    "rust": false,
+    "rust": true,
     "swift": false,
-    "zig": false
+    "zig": true
   }
 }

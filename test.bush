@@ -1,13 +1,18 @@
 
-$counter = 0 + 1 * 2
 
-function increase_counter($amount) {
-    $counter = $counter + ($amount * 2)
+// Operator precedence
+$counter = 1 || 2 && 3 == 4 + 5 * -(6 + 7)
+
+// function declaration
+function add($a, $b) {
+    return $a + $b
 }
 
-
+// loop
 while $counter < 10 {
-    ls -l
-    $test = $counter + 1
-    increase_counter 2
+    // piped command with redirects
+    cat test | cat > res.txt | cat &> res2.txt
+
+    // function call
+    $counter = $counter + $(add 1 2)
 }
