@@ -30,7 +30,6 @@ This document outlines the lexical tokens of the `bush` language, based on its t
 | Additive | `+`, `-` | Binary addition and subtraction |
 | Comparative | `==`, `!=`, `<`, `<=`, `>`, `>=` | Comparison operations |
 | Logical | `&&`, `\|\|` | Logical AND, Logical OR |
-| Unary | `+`, `-`, `!`, `^`, `*`, `&`, `<-` | Unary prefix operators |
 
 ## Shell and Command Specifics
 
