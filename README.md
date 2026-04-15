@@ -15,3 +15,8 @@ Bash Upgraded SHell
 
 1. Install [Tree-sitter CLI](https://github.com/tree-sitter/tree-sitter/blob/master/crates/cli/README.md)
 2. Run `tree-sitter generate grammar.js`
+
+## Documentation
+
+- [Language Tokens](docs/TOKENS.md)
+- [Grammar Rules](docs/GRAMMAR.md)
