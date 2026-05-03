@@ -1,5 +1,9 @@
 {
   "type": "module",
+  "scripts": {
+    "gen": "tree-sitter generate -o tree-sitter-config",
+    "bush": "zig build run --"
+  },
   "devDependencies": {
     "tree-sitter-cli": "^0.26.8"
   }

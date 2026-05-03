@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) !void {
 
     const library_name = "tree-sitter-bush";
 
-    const lib: *std.Build.Step.Compile = b.addLibrary(.{
+    const lib = b.addLibrary(.{
         .name = library_name,
         .linkage = if (shared) .dynamic else .static,
         .root_module = b.createModule(.{
@@ -21,12 +21,12 @@ pub fn build(b: *std.Build) !void {
     });
 
     lib.addCSourceFile(.{
-        .file = b.path("src/parser.c"),
+        .file = b.path("tree-sitter-config/parser.c"),
         .flags = &.{"-std=c11"},
     });
-    if (fileExists(b, "src/scanner.c")) {
+    if (fileExists(b, "tree-sitter-config/scanner.c")) {
         lib.addCSourceFile(.{
-            .file = b.path("src/scanner.c"),
+            .file = b.path("tree-sitter-config/scanner.c"),
             .flags = &.{"-std=c11"},
         });
     }
@@ -38,10 +38,11 @@ pub fn build(b: *std.Build) !void {
         lib.root_module.addCMacro("TREE_SITTER_DEBUG", "");
     }
 
-    lib.addIncludePath(b.path("src"));
+    lib.addIncludePath(b.path("tree-sitter-config"));
+    lib.linkSystemLibrary("tree-sitter");
 
     b.installArtifact(lib);
-    b.installFile("src/node-types.json", "node-types.json");
+    b.installFile("tree-sitter-config/node-types.json", "node-types.json");
 
     if (fileExists(b, "queries")) {
         b.installDirectory(.{
@@ -53,7 +54,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     const module = b.addModule(library_name, .{
-        .root_source_file = b.path("bindings/zig/root.zig"),
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -61,29 +62,42 @@ pub fn build(b: *std.Build) !void {
 
     const tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("bindings/zig/test.zig"),
+            .root_source_file = b.path("src/test.zig"),
             .target = target,
             .optimize = optimize,
         }),
     });
     tests.root_module.addImport(library_name, module);
-
-    // HACK: fetch tree-sitter dependency only when testing this module
-    if (b.pkg_hash.len == 0) {
-        var args = try std.process.argsWithAllocator(b.allocator);
-        defer args.deinit();
-        while (args.next()) |a| {
-            if (std.mem.eql(u8, a, "test")) {
-                const ts_dep = b.lazyDependency("tree_sitter", .{}) orelse continue;
-                tests.root_module.addImport("tree-sitter", ts_dep.module("tree-sitter"));
-                break;
-            }
-        }
-    }
+    tests.linkSystemLibrary("tree-sitter");
 
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
+
+    const exe = b.addExecutable(.{
+        .name = "bush",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    exe.use_llvm = true;
+    exe.use_lld = true;
+    exe.root_module.addImport(library_name, module);
+    exe.linkSystemLibrary("tree-sitter");
+    exe.linkLibC();
+
+    b.installArtifact(exe);
+
+    const run_cmd = b.addRunArtifact(exe);
+    run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
+
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
 }
 
 inline fn fileExists(b: *std.Build, filename: []const u8) bool {

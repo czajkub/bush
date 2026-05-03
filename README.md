@@ -32,10 +32,45 @@ while $counter < 10 {
 }
 ```
 
-## Generate parser
+## Development
 
-1. Install [Tree-sitter CLI](https://github.com/tree-sitter/tree-sitter/blob/master/crates/cli/README.md)
-2. Run `tree-sitter generate grammar.js`
+### Prerequisites
+
+- [Zig](https://ziglang.org/) (tested with 0.15.2)
+- [Node.js & npm](https://nodejs.org/)
+- [Tree-sitter CLI](https://tree-sitter.github.io/tree-sitter/creating-parsers#installation)
+- `libtree-sitter` (system library)
+
+### Generate Parser
+
+To generate the C parser from `grammar.js`, use the Tree-sitter CLI. You can run it via `npm` (if dependencies are installed) or directly:
+
+```bash
+# Using npm script
+npm run gen
+
+# Using npx (uses the tree-sitter-cli package)
+npx tree-sitter generate -o tree-sitter-config
+
+# Using global tree-sitter CLI
+tree-sitter generate -o tree-sitter-config
+```
+
+The `-o tree-sitter-config` flag is required to keep the generated code separated from the Zig source.
+
+### Build & Run
+
+To build the library and run the example application:
+
+```bash
+zig build run
+```
+
+### Run Tests
+
+```bash
+zig build test
+```
 
 ## Documentation
 
