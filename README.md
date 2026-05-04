@@ -30,13 +30,27 @@ while $counter < 10 {
     // function call
     $counter = $counter + $(add 1 2)
 }
+
+$a = 10
+$b = 20
+$c = $a + $b * 2
+
+$is_equal = $a == 10
+$is_greater = $b > $a
+
+$sum = add($a, $b)
+
+$EXPORT_TEST = 12345
+
+echo $EXPORT_TEST
+
 ```
 
 ## Development
 
 ### Prerequisites
 
-- [Zig](https://ziglang.org/) (tested with 0.15.2)
+- [Zig](https://ziglang.org/) (tested with 0.15.2, notoriously very unstable :P)
 - [Node.js & npm](https://nodejs.org/)
 - [Tree-sitter CLI](https://tree-sitter.github.io/tree-sitter/creating-parsers#installation)
 - `libtree-sitter` (system library)
@@ -50,7 +64,7 @@ To generate the C parser from `grammar.js`, use the Tree-sitter CLI. You can run
 npm run gen
 
 # Using npx (uses the tree-sitter-cli package)
-npx tree-sitter generate -o tree-sitter-config
+npx tree-sitter-cli generate -o tree-sitter-config
 
 # Using global tree-sitter CLI
 tree-sitter generate -o tree-sitter-config
@@ -63,7 +77,11 @@ The `-o tree-sitter-config` flag is required to keep the generated code separate
 To build the library and run the example application:
 
 ```bash
-zig build run
+# using npm script
+npm run bush test.bush
+
+# using zig directly (-- is for passing arguments)
+zig build run -- test.bush
 ```
 
 ### Run Tests
