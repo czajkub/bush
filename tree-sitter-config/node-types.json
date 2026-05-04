@@ -573,6 +573,10 @@
           {
             "type": "simple_argument",
             "named": true
+          },
+          {
+            "type": "variable_identifier",
+            "named": true
           }
         ]
       },
@@ -662,6 +666,10 @@
           },
           {
             "type": "simple_argument",
+            "named": true
+          },
+          {
+            "type": "variable_identifier",
             "named": true
           }
         ]

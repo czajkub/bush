@@ -45,7 +45,8 @@ fn run(allocator: std.mem.Allocator, path: []const u8, source: []const u8) !void
     var global_env = env.Environment.init(allocator, null);
     defer global_env.deinit();
 
-    var interpreter = interp.Interpreter.init(allocator, source, &global_env);
+    var interpreter = try interp.Interpreter.init(allocator, source, &global_env);
+    defer interpreter.env_map.deinit();
     _ = try interpreter.eval(root_node);
 
     std.debug.print("\nFinal Global Environment:\n", .{});

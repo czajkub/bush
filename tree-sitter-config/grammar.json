@@ -473,6 +473,10 @@
         {
           "type": "SYMBOL",
           "name": "command_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "variable_identifier"
         }
       ]
     },

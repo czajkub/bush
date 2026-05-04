@@ -16,7 +16,7 @@ This document outlines the lexical tokens of the `bush` language, based on its t
 | Token Name | Regex / Syntax | Description |
 | :--- | :--- | :--- |
 | `variable_identifier` | `/\$[a-zA-Z_]+/` | Variable identifier, prefix with `$` (e.g., `$var`) |
-| `command_name` | `/[a-zA-Z_./][a-zA-Z0-9_.\/-]*/` | Command executable name |
+| `command_name` | `/[a-zA-Z_./][a-zA-Z0-9_.\/-]*/` | Command executable name or function name |
 | `simple_argument` | `/[a-zA-Z0-9_.-]+/` | Simple command argument |
 | `number_literal`| `/\d+/` | Numeric sequence |
 | `string_literal`| `"..."` (`/"[^"]*"/`) | Double-quoted string literal |
@@ -30,6 +30,7 @@ This document outlines the lexical tokens of the `bush` language, based on its t
 | Additive | `+`, `-` | Binary addition and subtraction |
 | Comparative | `==`, `!=`, `<`, `<=`, `>`, `>=` | Comparison operations |
 | Logical | `&&`, `\|\|` | Logical AND, Logical OR |
+| Unary | `+`, `-`, `!` | Positive, Negative, Logical NOT |
 
 ## Shell and Command Specifics
 
@@ -45,8 +46,8 @@ This document outlines the lexical tokens of the `bush` language, based on its t
 | Token Name | Syntax | Description |
 | :--- | :--- | :--- |
 | Terminator | `\n`, `;`, `\0` | Statement terminators |
-| Parentheses | `(`, `)` | Grouping expressions, parameter lists |
+| Parentheses | `(`, `)` | Grouping expressions, parameter lists, argument lists |
 | Braces | `{`, `}` | Blocks of statements |
-| Comma | `,` | Separator for function parameters |
+| Comma | `,` | Separator for function parameters and arguments |
 | Line Comment | `// ...` | Single-line comment |
 | Block Comment | `/* ... */` | Multi-line comment |

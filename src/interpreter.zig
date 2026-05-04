@@ -15,6 +15,7 @@ pub const EvalError = error{
     UnsupportedOperator,
     DivisionByZero,
     ReturnTriggered,
+    CommandFailed,
 };
 
 const NodeType = enum {
@@ -32,6 +33,8 @@ const NodeType = enum {
     return_statement,
     block,
     call_expression,
+    simple_command,
+    piped_command,
     unknown,
 };
 
@@ -50,6 +53,8 @@ const node_type_map = std.StaticStringMap(NodeType).initComptime(.{
     .{ "return_statement", .return_statement },
     .{ "block", .block },
     .{ "call_expression", .call_expression },
+    .{ "simple_command", .simple_command },
+    .{ "piped_command", .piped_command },
 });
 
 pub const Interpreter = struct {
@@ -57,13 +62,15 @@ pub const Interpreter = struct {
     source: []const u8,
     environment: *env.Environment,
     return_value: ?env.Value = null,
+    env_map: std.process.EnvMap,
 
-    pub fn init(allocator: std.mem.Allocator, source: []const u8, environment: *env.Environment) Interpreter {
+    pub fn init(allocator: std.mem.Allocator, source: []const u8, environment: *env.Environment) !Interpreter {
         return .{
             .allocator = allocator,
             .source = source,
             .environment = environment,
             .return_value = null,
+            .env_map = try std.process.getEnvMap(allocator),
         };
     }
 
@@ -92,6 +99,8 @@ pub const Interpreter = struct {
             .block => return try eval_logic.evalBlock(self, node),
             .call_expression => return try eval_logic.evalCall(self, node),
             .return_statement => return try eval_logic.evalReturn(self, node),
+            .simple_command => return try eval_logic.evalSimpleCommand(self, node),
+            .piped_command => return try eval_logic.evalPipedCommand(self, node),
             .unknown => {
                 // If it's a wrapper node or unknown node, evaluate its children
                 var result: ?env.Value = null;

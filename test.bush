@@ -1,6 +1,7 @@
 $a = 10
 $b = 20
 $c = $a + $b * 2
+
 $is_equal = $a == 10
 $is_greater = $b > $a
 
@@ -13,3 +14,7 @@ while $a < 15 {
 }
 
 $sum = add($a, $b)
+
+$EXPORT_TEST = 12345
+
+echo $EXPORT_TEST
