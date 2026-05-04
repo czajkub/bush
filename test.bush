@@ -1,18 +1,20 @@
+$a = 10
+$b = 20
+$c = $a + $b * 2
 
+$is_equal = $a == 10
+$is_greater = $b > $a
 
-// Operator precedence
-$counter = 1 || 2 && 3 == 4 + 5 * -(6 + 7)
-
-// function declaration
-function add($a, $b) {
-    return $a + $b
+function add($x, $y) {
+    return $x + $y
 }
 
-// loop
-while $counter < 10 {
-    // piped command with redirects
-    cat test | cat > res.txt | cat &> res2.txt
-
-    // function call
-    $counter = $counter + $(add 1 2)
+while $a < 15 {
+    $a = $a + 1
 }
+
+$sum = add($a, $b)
+
+$EXPORT_TEST = 12345
+
+echo $EXPORT_TEST

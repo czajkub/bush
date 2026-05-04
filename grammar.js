@@ -30,17 +30,15 @@ export default grammar({
         "function",
         field("name", $.command_name),
         "(",
-        field(
-          "parameters",
-          optional(
-            seq($.variable_identifier, repeat(seq(",", $.variable_identifier))),
-          ),
-        ),
+        field("parameters", optional($.parameter_list)),
         ")",
         "{",
         repeat(seq($._statement, terminator)),
         "}",
       ),
+
+    parameter_list: ($) =>
+      seq($.variable_identifier, repeat(seq(",", $.variable_identifier))),
 
     _statement: ($) =>
       choice(
@@ -100,7 +98,7 @@ export default grammar({
 
     command_name: ($) => /[a-zA-Z_./][a-zA-Z0-9_.\/-]*/,
     _command_argument: ($) =>
-      choice($.simple_argument, $.expression_argument, $.command_expression),
+      choice($.simple_argument, $.expression_argument, $.command_expression, $.variable_identifier),
 
     simple_argument: ($) => /[a-zA-Z0-9_.-]+/,
     expression_argument: ($) => seq("${", $._expression, "}"),
@@ -113,15 +111,28 @@ export default grammar({
         $.command_expression,
         $.binary_expression,
         $.unary_expression,
-        $._parenthesized_expression,
+        $.parenthesized_expression,
+        $.call_expression,
       ),
-    _parenthesized_expression: ($) => seq("(", $._expression, ")"),
+
+    call_expression: ($) =>
+      seq(
+        field("function", $.command_name),
+        "(",
+        field("arguments", optional($.argument_list)),
+        ")",
+      ),
+
+    argument_list: ($) =>
+      seq($._expression, repeat(seq(",", $._expression))),
+
+    parenthesized_expression: ($) => seq("(", $._expression, ")"),
 
     unary_expression: ($) =>
       prec(
         PREC.unary,
         seq(
-          field("operator", choice("+", "-", "!", "^", "*", "&", "<-")),
+          field("operator", choice("+", "-", "!")),
           field("operand", $._expression),
         ),
       ),
