@@ -98,7 +98,7 @@ export default grammar({
 
     command_name: ($) => /[a-zA-Z_./][a-zA-Z0-9_.\/-]*/,
     _command_argument: ($) =>
-      choice($.simple_argument, $.expression_argument, $.command_expression, $.variable_identifier),
+      choice($.simple_argument, $.expression_argument, $.command_expression, $.variable_identifier, $.string_literal),
 
     simple_argument: ($) => /[a-zA-Z0-9_.-]+/,
     expression_argument: ($) => seq("${", $._expression, "}"),

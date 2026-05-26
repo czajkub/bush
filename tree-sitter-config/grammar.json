@@ -477,6 +477,10 @@
         {
           "type": "SYMBOL",
           "name": "variable_identifier"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "string_literal"
         }
       ]
     },

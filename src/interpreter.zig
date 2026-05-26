@@ -62,21 +62,55 @@ pub const Interpreter = struct {
     source: []const u8,
     environment: *env.Environment,
     return_value: ?env.Value = null,
-    env_map: std.process.EnvMap,
+    environ_map: *std.process.Environ.Map,
+    io: std.Io,
 
-    pub fn init(allocator: std.mem.Allocator, source: []const u8, environment: *env.Environment) !Interpreter {
+    pub fn init(allocator: std.mem.Allocator, source: []const u8, environment: *env.Environment, io: std.Io, environ_map: *std.process.Environ.Map) !Interpreter {
         return .{
             .allocator = allocator,
             .source = source,
             .environment = environment,
             .return_value = null,
-            .env_map = try std.process.getEnvMap(allocator),
+            .environ_map = environ_map,
+            .io = io,
         };
     }
 
     pub fn eval(self: *Interpreter, node: ts.TSNode) EvalError!?env.Value {
         if (ts.ts_node_is_null(node)) return null;
-        if (ts.ts_node_is_error(node)) return error.SyntaxError;
+        if (ts.ts_node_is_error(node)) {
+            const point = ts.ts_node_start_point(node);
+            const out = std.Io.File.stdout();
+            out.writeStreamingAll(self.io, "\nParsing Error at line ") catch {};
+
+            var buf: [20]u8 = undefined;
+            const line_str = std.fmt.bufPrint(&buf, "{d}", .{point.row + 1}) catch "??";
+            out.writeStreamingAll(self.io, line_str) catch {};
+            out.writeStreamingAll(self.io, ", column ") catch {};
+            const col_str = std.fmt.bufPrint(&buf, "{d}", .{point.column + 1}) catch "??";
+            out.writeStreamingAll(self.io, col_str) catch {};
+            out.writeStreamingAll(self.io, ": Execution stopped.\n") catch {};
+
+            // Find and print the line from source
+            var lines = std.mem.splitScalar(u8, self.source, '\n');
+            var current_row: u32 = 0;
+            while (lines.next()) |line| : (current_row += 1) {
+                if (current_row == point.row) {
+                    const row_str = std.fmt.bufPrint(&buf, " {d} | ", .{current_row + 1}) catch "?? | ";
+                    out.writeStreamingAll(self.io, row_str) catch {};
+                    out.writeStreamingAll(self.io, line) catch {};
+                    out.writeStreamingAll(self.io, "\n   | ") catch {};
+
+                    const num_len = std.fmt.count("{d}", .{current_row + 1});
+                    for (0..num_len) |_| out.writeStreamingAll(self.io, " ") catch {};
+                    for (0..point.column) |_| out.writeStreamingAll(self.io, " ") catch {};
+                    out.writeStreamingAll(self.io, "^\n") catch {};
+                    break;
+                }
+            }
+
+            return error.SyntaxError;
+        }
 
         const type_name = std.mem.span(ts.ts_node_type(node));
         const node_type = node_type_map.get(type_name) orelse .unknown;

@@ -50,7 +50,7 @@ echo $EXPORT_TEST
 
 ### Prerequisites
 
-- [Zig](https://ziglang.org/) (tested with 0.15.2, notoriously very unstable :P)
+- [Zig](https://ziglang.org/) (tested with 0.16.0, notoriously very unstable language :P)
 - [Node.js & npm](https://nodejs.org/)
 - [Tree-sitter CLI](https://tree-sitter.github.io/tree-sitter/creating-parsers#installation)
 - `libtree-sitter` (system library)

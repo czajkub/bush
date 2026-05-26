@@ -6,27 +6,46 @@ const ts = bush.ts;
 
 extern fn tree_sitter_bush() callconv(.c) *ts.TSLanguage;
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) void {
+    const allocator = init.gpa;
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    const args = init.minimal.args.toSlice(allocator) catch |err| {
+        std.debug.print("Fatal: failed to allocate arguments: {any}\n", .{err});
+        std.process.exit(1);
+    };
+    defer allocator.free(args);
 
-    if (args.len != 2) {
-        std.debug.print("Usage: {s} <file>\n", .{args[0]});
-        return error.InvalidArgs;
+    var path: ?[]const u8 = null;
+    var only_tree = false;
+
+    for (args[1..]) |arg| {
+        if (std.mem.eql(u8, arg, "--tree")) {
+            only_tree = true;
+        } else if (path == null) {
+            path = arg;
+        } else {
+            std.debug.print("Too many arguments\n", .{});
+            std.process.exit(1);
+        }
     }
 
-    const path = args[1];
-    const source_code = try read_file(allocator, path);
+    if (path == null) {
+        std.debug.print("Usage: {s} [--tree] <file>\n", .{args[0]});
+        std.process.exit(1);
+    }
+
+    const source_code = read_file(allocator, init.io, path.?) catch {
+        std.process.exit(1);
+    };
     defer allocator.free(source_code);
 
-    try run(allocator, path, source_code);
+    run(allocator, init.io, init.environ_map, path.?, source_code, only_tree) catch |err| {
+        std.debug.print("Fatal Error: {any}\n", .{err});
+        std.process.exit(1);
+    };
 }
 
-fn run(allocator: std.mem.Allocator, path: []const u8, source: []const u8) !void {
+fn run(allocator: std.mem.Allocator, io: std.Io, environ_map: *std.process.Environ.Map, path: []const u8, source: []const u8, only_tree: bool) !void {
     const language = tree_sitter_bush();
     const parser = ts.ts_parser_new();
     defer ts.ts_parser_delete(parser);
@@ -37,17 +56,22 @@ fn run(allocator: std.mem.Allocator, path: []const u8, source: []const u8) !void
 
     const root_node = ts.ts_tree_root_node(tree);
     
-    // Debug: Print the parsed tree with indentation
-    std.debug.print("Parsed tree:\n", .{});
-    print_node(root_node, 0, source);
-    std.debug.print("\n", .{});
-    
+    if (only_tree) {
+        std.debug.print("Parsed tree:\n", .{});
+        print_node(root_node, 0, source);
+        std.debug.print("\n", .{});
+        return;
+    }
+
     var global_env = env.Environment.init(allocator, null);
     defer global_env.deinit();
 
-    var interpreter = try interp.Interpreter.init(allocator, source, &global_env);
-    defer interpreter.env_map.deinit();
-    _ = try interpreter.eval(root_node);
+    var interpreter = try interp.Interpreter.init(allocator, source, &global_env, io, environ_map);
+    _ = interpreter.eval(root_node) catch |err| {
+        if (err != error.SyntaxError) {
+            std.debug.print("Runtime Error: {any}\n", .{err});
+        }
+    };
 
     std.debug.print("\nFinal Global Environment:\n", .{});
     var it = global_env.variables.iterator();
@@ -63,19 +87,18 @@ fn run(allocator: std.mem.Allocator, path: []const u8, source: []const u8) !void
     _ = path;
 }
 
-fn read_file(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
-    const file = std.fs.cwd().openFile(path, .{}) catch |err| {
+fn read_file(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
+    const cwd = std.Io.Dir.cwd();
+    return cwd.readFileAlloc(io, path, allocator, .unlimited) catch |err| {
         std.debug.print("Error opening file {s}: {any}\n", .{ path, err });
         return err;
     };
-    defer file.close();
+}
 
-    const size = try file.getEndPos();
-    const buffer = try allocator.alloc(u8, size);
-    const bytes_read = try file.readAll(buffer);
-    
-    if (bytes_read != size) return error.IncompleteRead;
-    return buffer;
+fn checkSyntax(io: std.Io, node: ts.TSNode, source: []const u8) void {
+    _ = io;
+    _ = node;
+    _ = source;
 }
 
 fn print_node(node: ts.TSNode, indent: usize, source: []const u8) void {

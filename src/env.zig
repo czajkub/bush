@@ -35,7 +35,10 @@ pub const Environment = struct {
         var it = self.variables.iterator();
         while (it.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
-            entry.value_ptr.deinit(self.allocator);
+            switch (entry.value_ptr.*) {
+                .string => |s| self.allocator.free(s),
+                else => {},
+            }
         }
         self.variables.deinit();
     }

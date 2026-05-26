@@ -38,7 +38,7 @@ pub fn evalAssignment(self: *interp.Interpreter, node: ts.TSNode) interp.EvalErr
     const str_val = try valueToString(self.allocator, value);
     defer self.allocator.free(str_val);
     
-    try self.env_map.put(env_name, str_val);
+    try self.environ_map.put(env_name, str_val);
 
     return value;
 }
@@ -142,28 +142,67 @@ pub fn evalFunctionDefinition(self: *interp.Interpreter, node: ts.TSNode) interp
 
 pub fn evalWhile(self: *interp.Interpreter, node: ts.TSNode) interp.EvalError!?env.Value {
     const condition_node = ts.ts_node_child_by_field_name(node, "condition", @intCast("condition".len));
-    const body_node = ts.ts_node_child_by_field_name(node, "body", @intCast("body".len));
-    if (ts.ts_node_is_null(condition_node) or ts.ts_node_is_null(body_node)) return error.SyntaxError;
+    if (ts.ts_node_is_null(condition_node)) return error.SyntaxError;
 
     var last_val: ?env.Value = null;
     while (try isTruthy(try self.eval(condition_node))) {
-        last_val = try self.eval(body_node);
+        var cursor = ts.ts_tree_cursor_new(node);
+        defer ts.ts_tree_cursor_delete(&cursor);
+
+        if (ts.ts_tree_cursor_goto_first_child(&cursor)) {
+            while (true) {
+                const child = ts.ts_tree_cursor_current_node(&cursor);
+                if (ts.ts_node_is_named(child)) {
+                    const type_name = std.mem.span(ts.ts_node_type(child));
+                    if (!std.mem.eql(u8, type_name, "binary_expression") and 
+                        !std.mem.eql(u8, type_name, "number_literal") and 
+                        !std.mem.eql(u8, type_name, "variable_identifier") and
+                        !std.mem.eql(u8, type_name, "unary_expression") and
+                        !std.mem.eql(u8, type_name, "parenthesized_expression") and
+                        !std.mem.eql(u8, type_name, "call_expression") and
+                        !std.mem.eql(u8, type_name, "string_literal")
+                    ) {
+                         last_val = try self.eval(child);
+                    }
+                }
+                if (!ts.ts_tree_cursor_goto_next_sibling(&cursor)) break;
+            }
+        }
     }
     return last_val;
 }
 
 pub fn evalIf(self: *interp.Interpreter, node: ts.TSNode) interp.EvalError!?env.Value {
     const condition_node = ts.ts_node_child_by_field_name(node, "condition", @intCast("condition".len));
-    const consequence_node = ts.ts_node_child_by_field_name(node, "consequence", @intCast("consequence".len));
-    const alternative_node = ts.ts_node_child_by_field_name(node, "alternative", @intCast("alternative".len));
-
-    if (ts.ts_node_is_null(condition_node) or ts.ts_node_is_null(consequence_node)) return error.SyntaxError;
+    if (ts.ts_node_is_null(condition_node)) return error.SyntaxError;
 
     if (try isTruthy(try self.eval(condition_node))) {
-        return try self.eval(consequence_node);
-    } else if (!ts.ts_node_is_null(alternative_node)) {
-        return try self.eval(alternative_node);
+        var cursor = ts.ts_tree_cursor_new(node);
+        defer ts.ts_tree_cursor_delete(&cursor);
+
+        var last_val: ?env.Value = null;
+        if (ts.ts_tree_cursor_goto_first_child(&cursor)) {
+            while (true) {
+                const child = ts.ts_tree_cursor_current_node(&cursor);
+                if (ts.ts_node_is_named(child)) {
+                    const type_name = std.mem.span(ts.ts_node_type(child));
+                    if (!std.mem.eql(u8, type_name, "binary_expression") and 
+                        !std.mem.eql(u8, type_name, "number_literal") and 
+                        !std.mem.eql(u8, type_name, "variable_identifier") and
+                        !std.mem.eql(u8, type_name, "unary_expression") and
+                        !std.mem.eql(u8, type_name, "parenthesized_expression") and
+                        !std.mem.eql(u8, type_name, "call_expression") and
+                        !std.mem.eql(u8, type_name, "string_literal")
+                    ) {
+                         last_val = try self.eval(child);
+                    }
+                }
+                if (!ts.ts_tree_cursor_goto_next_sibling(&cursor)) break;
+            }
+        }
+        return last_val;
     }
+
     return null;
 }
 
@@ -282,12 +321,14 @@ pub fn evalSimpleCommand(self: *interp.Interpreter, node: ts.TSNode) interp.Eval
         argv.deinit(self.allocator);
     }
 
-    var child_process = std.process.Child.init(argv.items, self.allocator);
-    child_process.env_map = &self.env_map;
-    const term = child_process.spawnAndWait() catch return error.CommandFailed;
+    var child = std.process.spawn(self.io, .{
+        .argv = argv.items,
+        .environ_map = self.environ_map,
+    }) catch return error.CommandFailed;
+    const term = child.wait(self.io) catch return error.CommandFailed;
 
     return switch (term) {
-        .Exited => |code| .{ .integer = @intCast(code) },
+        .exited => |code| .{ .integer = @intCast(code) },
         else => .{ .integer = -1 },
     };
 }
@@ -306,14 +347,14 @@ fn collectPipelineCommands(allocator: std.mem.Allocator, node: ts.TSNode, list: 
     }
 }
 
-fn pipeShuttle(in: std.fs.File, out: std.fs.File) void {
+fn pipeShuttle(io: std.Io, in: std.Io.File, out: std.Io.File) void {
     var buf: [4096]u8 = undefined;
     while (true) {
-        const n = in.read(&buf) catch break;
+        const n = in.readStreaming(io, &.{&buf}) catch break;
         if (n == 0) break;
-        out.writeAll(buf[0..n]) catch break;
+        out.writeStreamingAll(io, buf[0..n]) catch break;
     }
-    out.close();
+    out.close(io);
 }
 
 pub fn evalPipedCommand(self: *interp.Interpreter, node: ts.TSNode) interp.EvalError!env.Value {
@@ -335,27 +376,19 @@ pub fn evalPipedCommand(self: *interp.Interpreter, node: ts.TSNode) interp.EvalE
         argv_list.deinit(self.allocator);
     }
 
-    // Initialize all children
+    // Initialize and spawn all children
     for (commands.items, 0..) |cmd_node, i| {
         const argv = try collectArgv(self, cmd_node);
         try argv_list.append(self.allocator, argv);
 
-        var child = std.process.Child.init(argv.items, self.allocator);
-        child.env_map = &self.env_map;
-        
-        if (i > 0) {
-            child.stdin_behavior = .Pipe;
-        }
-        if (i < commands.items.len - 1) {
-            child.stdout_behavior = .Pipe;
-        }
+        const child = std.process.spawn(self.io, .{
+            .argv = argv.items,
+            .environ_map = self.environ_map,
+            .stdin = if (i > 0) .pipe else .inherit,
+            .stdout = if (i < commands.items.len - 1) .pipe else .inherit,
+        }) catch return error.CommandFailed;
         
         try children.append(self.allocator, child);
-    }
-
-    // Spawn all children
-    for (children.items) |*child| {
-        child.spawn() catch return error.CommandFailed;
     }
 
     var threads: std.ArrayList(std.Thread) = .empty;
@@ -365,7 +398,7 @@ pub fn evalPipedCommand(self: *interp.Interpreter, node: ts.TSNode) interp.EvalE
     for (0..children.items.len - 1) |i| {
         const in_file = children.items[i].stdout.?;
         const out_file = children.items[i+1].stdin.?;
-        const thread = std.Thread.spawn(.{}, pipeShuttle, .{ in_file, out_file }) catch return error.CommandFailed;
+        const thread = std.Thread.spawn(.{}, pipeShuttle, .{ self.io, in_file, out_file }) catch return error.CommandFailed;
         try threads.append(self.allocator, thread);
     }
 
@@ -383,9 +416,9 @@ pub fn evalPipedCommand(self: *interp.Interpreter, node: ts.TSNode) interp.EvalE
     // Wait for all children
     var last_code: u32 = 0;
     for (children.items) |*child| {
-        const term = child.wait() catch return error.CommandFailed;
+        const term = child.wait(self.io) catch return error.CommandFailed;
         switch (term) {
-            .Exited => |code| last_code = code,
+            .exited => |code| last_code = code,
             else => last_code = 1,
         }
     }
@@ -427,12 +460,14 @@ fn collectArgv(self: *interp.Interpreter, node: ts.TSNode) !std.ArrayList([]cons
             simple_argument,
             variable_identifier,
             expression_argument,
+            string_literal,
             other,
         };
         const arg_type = std.StaticStringMap(ArgType).initComptime(.{
             .{ "simple_argument", .simple_argument },
             .{ "variable_identifier", .variable_identifier },
             .{ "expression_argument", .expression_argument },
+            .{ "string_literal", .string_literal },
         }).get(type_name) orelse .other;
 
         switch (arg_type) {
@@ -441,12 +476,20 @@ fn collectArgv(self: *interp.Interpreter, node: ts.TSNode) !std.ArrayList([]cons
             },
             .variable_identifier => {
                 const val = try self.eval(child) orelse return error.ExpressionEvaluatedToNull;
+                // String value from eval(variable_identifier) is NOT a copy
                 const str = try valueToString(self.allocator, val);
                 try argv.append(self.allocator, str);
             },
             .expression_argument => {
                 const expr = ts.ts_node_named_child(child, 0);
                 const val = try self.eval(expr) orelse return error.ExpressionEvaluatedToNull;
+                const str = try valueToString(self.allocator, val);
+                try argv.append(self.allocator, str);
+            },
+            .string_literal => {
+                const val = try self.eval(child) orelse return error.ExpressionEvaluatedToNull;
+                // String value from eval(string_literal) IS a new copy
+                defer if (val == .string) self.allocator.free(val.string);
                 const str = try valueToString(self.allocator, val);
                 try argv.append(self.allocator, str);
             },

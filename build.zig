@@ -20,16 +20,10 @@ pub fn build(b: *std.Build) !void {
         }),
     });
 
-    lib.addCSourceFile(.{
+    lib.root_module.addCSourceFile(.{
         .file = b.path("tree-sitter-config/parser.c"),
         .flags = &.{"-std=c11"},
     });
-    if (fileExists(b, "tree-sitter-config/scanner.c")) {
-        lib.addCSourceFile(.{
-            .file = b.path("tree-sitter-config/scanner.c"),
-            .flags = &.{"-std=c11"},
-        });
-    }
 
     if (reuse_alloc) {
         lib.root_module.addCMacro("TREE_SITTER_REUSE_ALLOCATOR", "");
@@ -38,20 +32,11 @@ pub fn build(b: *std.Build) !void {
         lib.root_module.addCMacro("TREE_SITTER_DEBUG", "");
     }
 
-    lib.addIncludePath(b.path("tree-sitter-config"));
-    lib.linkSystemLibrary("tree-sitter");
+    lib.root_module.addIncludePath(b.path("tree-sitter-config"));
+    lib.root_module.linkSystemLibrary("tree-sitter", .{});
 
     b.installArtifact(lib);
     b.installFile("tree-sitter-config/node-types.json", "node-types.json");
-
-    if (fileExists(b, "queries")) {
-        b.installDirectory(.{
-            .source_dir = b.path("queries"),
-            .install_dir = .prefix,
-            .install_subdir = "queries",
-            .include_extensions = &.{"scm"},
-        });
-    }
 
     const module = b.addModule(library_name, .{
         .root_source_file = b.path("src/root.zig"),
@@ -68,7 +53,7 @@ pub fn build(b: *std.Build) !void {
         }),
     });
     tests.root_module.addImport(library_name, module);
-    tests.linkSystemLibrary("tree-sitter");
+    tests.root_module.linkSystemLibrary("tree-sitter", .{});
 
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run unit tests");
@@ -80,13 +65,13 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
         }),
     });
     exe.use_llvm = true;
     exe.use_lld = true;
     exe.root_module.addImport(library_name, module);
-    exe.linkSystemLibrary("tree-sitter");
-    exe.linkLibC();
+    exe.root_module.linkSystemLibrary("tree-sitter", .{});
 
     b.installArtifact(exe);
 
@@ -98,10 +83,4 @@ pub fn build(b: *std.Build) !void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
-}
-
-inline fn fileExists(b: *std.Build, filename: []const u8) bool {
-    const dir = b.build_root.handle;
-    dir.access(filename, .{}) catch return false;
-    return true;
 }
