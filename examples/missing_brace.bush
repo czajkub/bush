@@ -1,0 +1,4 @@
+$a = 10
+// Missing closing brace for if statement
+if $a > 5 {
+    echo "This is broken"

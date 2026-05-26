@@ -1,0 +1,4 @@
+// Simple variables and commands
+$user = "Developer"
+echo "Hello," $user
+echo "Welcome to Bush shell."

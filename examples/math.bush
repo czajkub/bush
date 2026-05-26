@@ -1,0 +1,14 @@
+// Basic math operations
+$a = 20
+$b = 10
+
+$sum = $a + $b
+$diff = $a - $b
+$prod = $a * $b
+$quot = $a / $b
+
+echo "A:" $a "B:" $b
+echo "Sum:" $sum
+echo "Diff:" $diff
+echo "Prod:" $prod
+echo "Quot:" $quot
