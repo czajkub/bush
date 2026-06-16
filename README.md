@@ -1,50 +1,33 @@
 # bush
 
-Bash Upgraded SHell
-
-- **Goal:** improve the existing bash shell by removing arcane syntax conventions and simplifying syntax
-- **Language:** Zig
-- **Parser Generator:** Tree-sitter
-
-## Authors
+### Authors
 
 - Jakub Czajka <czajkub@student.agh.edu.pl>
 - Jakub Czyż <jczyz@student.agh.edu.pl>
 
-## Example program
 
-```
-// Operator precedence
-$counter = 1 || 2 && 3 == 4 + 5 * -(6 + 7)
+## Bash Upgraded SHell
 
-// function declaration
-function add($a, $b) {
-    return $a + $b
-}
 
-// loop
-while $counter < 10 {
-    // piped command with redirects
-    cat test | cat > res.txt | cat &> res2.txt
+The **Goal** of the languague is improving the existing bash shell by removing arcane syntax conventions and simplifying syntax.
+This is done in several ways:
+- variable names start with a `$`, e.g. `$a = 10`
+- function definitions must *explicitly* start with keyword `function`
+- improved control flow: C-style `if` conditionals, `for`, `while` loops
+  
+This is done to give bash a slightly more modern feel rather than outdated syntax not seen anywhere else (e.g. `[[  ]]` tests)
 
-    // function call
-    $counter = $counter + $(add 1 2)
-}
+### Technical details:
+- **Language Type:** Interpreted language
+- **Implementation Language:** Zig
+- **Parser Generator** used: [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)
 
-$a = 10
-$b = 20
-$c = $a + $b * 2
 
-$is_equal = $a == 10
-$is_greater = $b > $a
+## Grammar
 
-$sum = add($a, $b)
+- [Language Tokens](docs/TOKENS.md)
+- [Grammar Rules](docs/GRAMMAR.md)
 
-$EXPORT_TEST = 12345
-
-echo $EXPORT_TEST
-
-```
 
 ## Development
 
@@ -90,7 +73,25 @@ zig build run -- test.bush
 zig build test
 ```
 
-## Documentation
 
-- [Language Tokens](docs/TOKENS.md)
-- [Grammar Rules](docs/GRAMMAR.md)
+
+## Example program
+
+```
+$a = 20
+$b = 10
+
+function sum2($a, $b) {
+    return $a + $b;
+}
+
+$sum = sum2($a, $b)
+
+if ($sum > 25) {
+    echo "Sum is greater than 25"
+}
+
+```
+
+
+
