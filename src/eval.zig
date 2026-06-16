@@ -135,7 +135,7 @@ pub fn evalFunctionDefinition(self: *interp.Interpreter, node: ts.TSNode) interp
     const name_node = ts.ts_node_child_by_field_name(node, "name", @intCast("name".len));
     if (ts.ts_node_is_null(name_node)) return error.SyntaxError;
     const name = self.getNodeSource(name_node);
-    const value = env.Value{ .function = node };
+    const value = env.Value{ .function = .{ .node = node, .source = self.source } };
     try self.environment.set(name, value);
     return value;
 }
@@ -232,7 +232,7 @@ pub fn evalCall(self: *interp.Interpreter, node: ts.TSNode) interp.EvalError!?en
 
     if (func_val != .function) return error.UnsupportedOperator;
 
-    const def_node = func_val.function;
+    const def_node = func_val.function.node;
     const params_node = ts.ts_node_child_by_field_name(def_node, "parameters", @intCast("parameters".len));
     const args_node = ts.ts_node_child_by_field_name(node, "arguments", @intCast("arguments".len));
     
@@ -240,28 +240,36 @@ pub fn evalCall(self: *interp.Interpreter, node: ts.TSNode) interp.EvalError!?en
     var call_env = env.Environment.init(self.allocator, self.environment);
     defer call_env.deinit();
 
+    // Def nodes index into def_source; args are evaluated against caller source.
+    const caller_source = self.source;
+    const def_source = func_val.function.source;
+
     // Bind arguments to parameters
     if (!ts.ts_node_is_null(params_node)) {
         const param_count = ts.ts_node_named_child_count(params_node);
         const arg_count = if (ts.ts_node_is_null(args_node)) 0 else ts.ts_node_named_child_count(args_node);
-        
+
         if (param_count != arg_count) {
-            // Special case: if param_count is 0 but params_node is not null, 
+            // Special case: if param_count is 0 but params_node is not null,
             // maybe params_node IS the parameter (if it's a single param)
             if (param_count == 0 and arg_count == 1) {
+                self.source = def_source;
                 const param_name = self.getNodeSource(params_node);
+                self.source = caller_source;
                 const arg = ts.ts_node_named_child(args_node, 0);
                 const arg_val = try self.eval(arg) orelse return error.ExpressionEvaluatedToNull;
                 try call_env.set(param_name, arg_val);
             } else {
-                return error.UnsupportedOperator; 
+                return error.UnsupportedOperator;
             }
         } else {
             var i: u32 = 0;
             while (i < param_count) : (i += 1) {
                 const param = ts.ts_node_named_child(params_node, i);
                 const arg = ts.ts_node_named_child(args_node, i);
+                self.source = def_source;
                 const param_name = self.getNodeSource(param);
+                self.source = caller_source;
                 // Evaluate arg in the OLD environment
                 const arg_val = try self.eval(arg) orelse return error.ExpressionEvaluatedToNull;
                 try call_env.set(param_name, arg_val);
@@ -273,6 +281,9 @@ pub fn evalCall(self: *interp.Interpreter, node: ts.TSNode) interp.EvalError!?en
     const old_env = self.environment;
     self.environment = &call_env;
     defer self.environment = old_env;
+
+    self.source = def_source;
+    defer self.source = caller_source;
 
     // Evaluate body
     var cursor = ts.ts_tree_cursor_new(def_node);

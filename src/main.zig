@@ -30,8 +30,15 @@ pub fn main(init: std.process.Init) void {
     }
 
     if (path == null) {
-        std.debug.print("Usage: {s} [--tree] <file>\n", .{args[0]});
-        std.process.exit(1);
+        if (only_tree) {
+            std.debug.print("Usage: {s} [--tree] <file>\n", .{args[0]});
+            std.process.exit(1);
+        }
+        bush.cli.repl(allocator, init.io, init.environ_map) catch |err| {
+            std.debug.print("Fatal Error: {any}\n", .{err});
+            std.process.exit(1);
+        };
+        return;
     }
 
     const source_code = read_file(allocator, init.io, path.?) catch {

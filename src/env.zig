@@ -3,12 +3,20 @@ const std = @import("std");
 const bush = @import("root.zig");
 const ts = bush.ts;
 
+/// A defined function: its definition node plus the source buffer the node's
+/// byte offsets index into. The source is owned elsewhere (the file buffer in
+/// script mode, or the REPL's session-lived source list), never by the Value.
+pub const Function = struct {
+    node: ts.TSNode,
+    source: []const u8,
+};
+
 pub const Value = union(enum) {
     integer: i64,
     float: f64,
     string: []const u8,
     boolean: bool,
-    function: ts.TSNode,
+    function: Function,
 
     pub fn deinit(self: Value, allocator: std.mem.Allocator) void {
         switch (self) {
